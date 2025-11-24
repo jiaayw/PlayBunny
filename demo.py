@@ -6,6 +6,7 @@ import os
 import glob
 import setup
 import config as cfg
+import time # <--- Import time
 from metrics_viz import TrainingMetrics
 
 # Import Shared Logic
@@ -73,13 +74,16 @@ class HumanHunter(setup.Agent):
                     metrics.update_step(cfg.CAUGHT_BY_HUNTER) 
                     metrics.record_outcome('died')
                     
+                    # --- VISUAL FIX: Show overlap before reset ---
+                    self.world.display.redraw()
+                    self.world.display.root.update()
+                    time.sleep(0.15)
+                    # ---------------------------------------------
+
                     # --- 3. AUTO-GO TO LEVEL 3 ---
                     if self.hunterWin >= 10 and "level3" not in self.world.filename:
                         print("\n>>> LEVEL 3 UNLOCKED! ENTERING BOSS MODE... <<<\n")
-                        
-                        # FIX: Save Level 2 progress before switching!
                         save_progress()
-                        
                         global TRIGGER_LEVEL_3
                         TRIGGER_LEVEL_3 = True
                         self.world.display.root.destroy()
@@ -117,7 +121,7 @@ def game_step():
 
 def on_close():
     print("Ending simulation...")
-    save_progress() # Use the helper function
+    save_progress()
     
     if world and world.display.root:
         try:
@@ -158,12 +162,21 @@ def run_game(brain_file, map_file, title_msg):
 
 if __name__ == '__main__':
     # --- CONFIG ---
-    CUSTOM_BRAIN_FILE = "resources/brain/rabbit_brain_20251123-152318.pkl" 
+    LEVEL_2_BRAIN = "resources/brain/smart.pkl" 
+    LEVEL_3_BRAIN = "resources/brain/smart.pkl" 
+
     # --------------
 
-    smart_brain = CUSTOM_BRAIN_FILE
-    if smart_brain is None or not os.path.exists(smart_brain):
-        smart_brain = get_latest_brain()
+    level2_brain = LEVEL_2_BRAIN
+    if level2_brain is None or not os.path.exists(level2_brain):
+        print(f"Warning: Custom brain '{level2_brain}' not found. Defaulting to latest.")
+        level2_brain = get_latest_brain()
+    
+    level3_brain = LEVEL_3_BRAIN
+    if level3_brain is None or not os.path.exists(level3_brain):
+        print(f"Warning: Custom brain '{level3_brain}' not found. Defaulting to latest.")
+        level3_brain = level2_brain
+    
 
     while True:
         TRIGGER_LEVEL_3 = False
@@ -179,13 +192,13 @@ if __name__ == '__main__':
 
         selected_brain = None
         if choice == '2':
-            selected_brain = smart_brain
+            selected_brain = level2_brain
             if not selected_brain:
                 print("No smart brain found. Using Fresh.")
         
         run_game(selected_brain, 'resources/world.txt', f"Level {choice}")
 
         if TRIGGER_LEVEL_3:
-            hard_map = "resources/world_level3.txt"
-            run_game(smart_brain, hard_map, "LEVEL 3")
+            level3_map = "resources/world_level3.txt"
+            run_game(level3_brain, level3_map, "LEVEL 3 (BOSS MODE)")
             print("Returning to Menu...")

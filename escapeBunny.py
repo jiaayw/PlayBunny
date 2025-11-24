@@ -4,6 +4,7 @@ import config as cfg
 import importlib
 import os
 import datetime
+import time
 from metrics_viz import TrainingMetrics
 
 # Import optimized agents
@@ -16,14 +17,12 @@ if __name__ == '__main__':
     LOAD_FILE = None
 
     # --- 1. PERFORMANCE SETTING ---
-    # Set to False to train at max speed (Invisible).
-    # Set to True to watch the game (Normal speed).
-    RENDER = True 
+    RENDER = True
 
     # 1. Setup Metrics
     metrics = TrainingMetrics()
 
-    # 2. Setup Agents (Pass metrics to Rabbit)
+    # 2. Setup Agents
     rabbit = Rabbit(brain_file=LOAD_FILE, metrics=metrics)
     hunter = Hunter(filename='resources/world.txt')
     carrot = Carrot()
@@ -39,19 +38,30 @@ if __name__ == '__main__':
         world.display.speed = cfg.speed
 
     print(f"Training started. Render Mode: {RENDER}")
+    print("Press 'Ctrl + C' in the terminal to stop and save.")
 
-    while True:
-        world.update(rabbit.rabbitWin, rabbit.hunterWin)
-        
-        if RENDER:
-            if hasattr(world, "display") and not world.display.activated:
-                print("Display deactivated.")
-                break
-        else:
-             # Stop after specific number of steps if invisible
-            # (e.g., stop after 5000 episodes or manually via Ctrl+C)
-            # For now, we rely on Ctrl+C to stop in console
-            pass
+    # --- ADDED: Step counter for logging ---
+    total_steps = 0 
+
+    try:
+        while True:
+            world.update(rabbit.rabbitWin, rabbit.hunterWin)
+            
+            if RENDER:
+                if hasattr(world, "display") and not world.display.activated:
+                    print("Display deactivated.")
+                    break
+            else:
+                time.sleep(0.01)
+                # --- VISUALIZE PROCESS IN CONSOLE ---
+                total_steps += 1
+                # Print progress every 1000 steps so you know it's working
+                if total_steps % 100 == 0:
+                    print(f"Training... Step: {total_steps} | Carrots: {rabbit.rabbitWin} | Deaths: {rabbit.hunterWin}")
+
+    except KeyboardInterrupt:
+        # This runs when you press Ctrl+C
+        print("\n\nStopping training...")
 
     # Save Logic
     print("Saving progress...")

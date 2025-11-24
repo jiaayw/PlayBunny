@@ -5,8 +5,9 @@ import qlearn
 import config as cfg
 import os
 import heapq
+import time # <--- Added import
 
-# Helper function: Now accepts 'world' as an argument
+# Helper function
 def pick_random_location(world):
     while 1:
         x = random.randrange(world.width)
@@ -76,7 +77,6 @@ class Hunter(setup.Agent):
 
             for i in range(4):
                 ny, nx = current[0] + self.move[i][0], current[1] + self.move[i][1]
-                # Boundary Check
                 if nx < 0 or ny < 0 or nx >= self.world.width or ny >= self.world.height: continue
                 if self.grid_list[ny][nx] == 1: continue
 
@@ -111,7 +111,6 @@ class Hunter(setup.Agent):
             self.astar_move(rabbit_cell)
 
 class Rabbit(setup.Agent):
-    # Added 'metrics' argument to handle logging
     def __init__(self, brain_file=None, metrics=None):
         self.ai = None
         self.ai = qlearn.QLearn(actions=range(4), alpha=0.1, gamma=0.9, epsilon=0.1)
@@ -133,7 +132,6 @@ class Rabbit(setup.Agent):
         caught = False
         hunter_agent = None
         
-        # Detect generic Hunter by color (Works for both AI Hunter and HumanHunter)
         for agent in self.cell.agents:
             if getattr(agent, 'color', None) == cfg.hunter_color:
                 self.hunterWin += 1
@@ -143,27 +141,26 @@ class Rabbit(setup.Agent):
                 break
         
         if caught:
-            # Learn
             if self.lastState is not None:
                 self.ai.learn(self.lastState, self.lastAction, state, reward)
             
-            # Log Metrics
             if self.metrics:
                 self.metrics.update_step(reward)
                 self.metrics.record_outcome('died')
             
+            # --- VISUAL FIX: Force draw so player sees the collision ---
+            if hasattr(self.world, 'display') and self.world.display and self.world.display.activated:
+                self.world.display.redraw()
+                self.world.display.root.update() # Force update screen
+                time.sleep(0.15) # Pause 0.15s to let player see the hit
+            # -----------------------------------------------------------
+
             self.lastState = None
-            
-            # Reset
             self.cell = pick_random_location(self.world)
             if hunter_agent:
                 hunter_agent.cell = pick_random_location(self.world)
                 
             self.skip_turn = True 
-            
-            # Force redraw if display exists
-            if hasattr(self.world, 'display') and self.world.display:
-                self.world.display.redraw()
             return True
         return False
 
@@ -175,10 +172,8 @@ class Rabbit(setup.Agent):
         state = self.calculate_state()
         reward = cfg.MOVE_REWARD
 
-        # 1. Pre-move Check
         if self._check_collision_and_die(state, reward): return
 
-        # 2. Carrot Check
         found_carrot = False
         target_carrot = None
         for agent in self.cell.agents:
@@ -200,13 +195,11 @@ class Rabbit(setup.Agent):
             if self.metrics:
                 self.metrics.update_step(reward)
 
-        # 3. Learn & Move
         if self.lastState is not None:
             self.ai.learn(self.lastState, self.lastAction, state, reward)
 
         action = self.ai.choose_action(state)
         
-        # Bounds Check
         dx, dy = [(0, -1), (1, 0), (0, 1), (-1, 0)][action]
         next_x = self.cell.x + dx
         next_y = self.cell.y + dy
@@ -219,30 +212,23 @@ class Rabbit(setup.Agent):
             self.lastState = state
             self.lastAction = action
 
-        # 4. Post-move Check
         if self._check_collision_and_die(state, reward): return
 
     def calculate_state(self):
-        # 1. Immediate Surroundings (8 neighbors)
         def cell_value(cell):
             if cell.wall: return 1
-            # We don't check agents here to save state space complexity
-            # Walls are the most important immediate constraint
             return 0
 
         dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         surroundings = [cell_value(self.world.get_relative_cell(self.cell.x + d[0], self.cell.y + d[1])) for d in dirs]
 
-         # 2. Radar (Where is the Hunter?)
-        # Finds the CLOSEST hunter
         hunter_dx, hunter_dy = 0, 0
         closest_dist = 9999
-        for agent in self.cell.agents: # Check current cell first
+        for agent in self.cell.agents:
              if getattr(agent, 'color', None) == cfg.hunter_color:
                  hunter_dx, hunter_dy = 0, 0
                  break
         
-        # Check world for hunter (Global Vision)
         for agent in self.world.agents:
              if getattr(agent, 'color', None) == cfg.hunter_color:
                  dx = agent.cell.x - self.cell.x
@@ -250,11 +236,9 @@ class Rabbit(setup.Agent):
                  dist = abs(dx) + abs(dy)
                  if dist < closest_dist:
                      closest_dist = dist
-                     # Normalize to -1, 0, 1 to keep Q-table small
                      hunter_dx = -1 if dx < 0 else (1 if dx > 0 else 0)
                      hunter_dy = -1 if dy < 0 else (1 if dy > 0 else 0)
         
-        # 3. Radar (Where is the Carrot?)
         carrot_dx, carrot_dy = 0, 0
         for agent in self.world.agents:
             if isinstance(agent, Carrot):
@@ -262,10 +246,6 @@ class Rabbit(setup.Agent):
                 dy = agent.cell.y - self.cell.y
                 carrot_dx = -1 if dx < 0 else (1 if dx > 0 else 0)
                 carrot_dy = -1 if dy < 0 else (1 if dy > 0 else 0)
-                break # Assuming one carrot
+                break
         
-        # Combine: Surroundings + Hunter Direction + Carrot Direction
-        # This helps the AI know which way to run/chase generally
         return tuple(surroundings + [hunter_dx, hunter_dy, carrot_dx, carrot_dy])
-
-    
