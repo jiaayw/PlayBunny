@@ -5,7 +5,6 @@ import qlearn
 import config as cfg
 import os
 import heapq
-import time # <--- Added import
 
 # Helper function
 def pick_random_location(world):
@@ -18,8 +17,9 @@ def pick_random_location(world):
 
 class Carrot(setup.Agent):
     def __init__(self):
-        self.color = cfg.carrot_color
+        # Removed self.color
         self.image_file = cfg.carrot_img
+    
     def update(self):
         pass
 
@@ -27,7 +27,7 @@ class Hunter(setup.Agent):
     def __init__(self, filename):
         self.cell = None
         self.hunterWin = 0
-        self.color = cfg.hunter_color
+        # Removed self.color
         self.image_file = cfg.hunter_img
         
         self.move = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -77,6 +77,7 @@ class Hunter(setup.Agent):
 
             for i in range(4):
                 ny, nx = current[0] + self.move[i][0], current[1] + self.move[i][1]
+                # Boundary Check
                 if nx < 0 or ny < 0 or nx >= self.world.width or ny >= self.world.height: continue
                 if self.grid_list[ny][nx] == 1: continue
 
@@ -118,7 +119,7 @@ class Rabbit(setup.Agent):
         self.rabbitWin = 0
         self.lastState = None
         self.lastAction = None
-        self.color = cfg.rabbit_color
+        # Removed self.color
         self.image_file = cfg.rabbit_img
         self.skip_turn = False 
         self.metrics = metrics 
@@ -132,8 +133,10 @@ class Rabbit(setup.Agent):
         caught = False
         hunter_agent = None
         
+        # LOGIC CHANGED: Check if agent is an instance of Hunter class
+        # instead of checking color.
         for agent in self.cell.agents:
-            if getattr(agent, 'color', None) == cfg.hunter_color:
+            if isinstance(agent, Hunter):
                 self.hunterWin += 1
                 reward = cfg.CAUGHT_BY_HUNTER
                 caught = True
@@ -148,19 +151,16 @@ class Rabbit(setup.Agent):
                 self.metrics.update_step(reward)
                 self.metrics.record_outcome('died')
             
-            # --- VISUAL FIX: Force draw so player sees the collision ---
-            if hasattr(self.world, 'display') and self.world.display and self.world.display.activated:
-                self.world.display.redraw()
-                self.world.display.root.update() # Force update screen
-                time.sleep(0.15) # Pause 0.15s to let player see the hit
-            # -----------------------------------------------------------
-
             self.lastState = None
+            
             self.cell = pick_random_location(self.world)
             if hunter_agent:
                 hunter_agent.cell = pick_random_location(self.world)
                 
             self.skip_turn = True 
+            
+            if hasattr(self.world, 'display') and self.world.display:
+                self.world.display.redraw()
             return True
         return False
 
@@ -176,6 +176,7 @@ class Rabbit(setup.Agent):
 
         found_carrot = False
         target_carrot = None
+        # LOGIC CHANGED: Explicit type check for Carrot
         for agent in self.cell.agents:
             if isinstance(agent, Carrot):
                 found_carrot = True
@@ -215,6 +216,7 @@ class Rabbit(setup.Agent):
         if self._check_collision_and_die(state, reward): return
 
     def calculate_state(self):
+        # 1. Immediate Surroundings (8 neighbors)
         def cell_value(cell):
             if cell.wall: return 1
             return 0
@@ -222,15 +224,13 @@ class Rabbit(setup.Agent):
         dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         surroundings = [cell_value(self.world.get_relative_cell(self.cell.x + d[0], self.cell.y + d[1])) for d in dirs]
 
+        # 2. Radar (Where is the Hunter?)
         hunter_dx, hunter_dy = 0, 0
         closest_dist = 9999
-        for agent in self.cell.agents:
-             if getattr(agent, 'color', None) == cfg.hunter_color:
-                 hunter_dx, hunter_dy = 0, 0
-                 break
         
+        # LOGIC CHANGED: Check for Hunter instance instead of color
         for agent in self.world.agents:
-             if getattr(agent, 'color', None) == cfg.hunter_color:
+             if isinstance(agent, Hunter):
                  dx = agent.cell.x - self.cell.x
                  dy = agent.cell.y - self.cell.y
                  dist = abs(dx) + abs(dy)
@@ -239,6 +239,7 @@ class Rabbit(setup.Agent):
                      hunter_dx = -1 if dx < 0 else (1 if dx > 0 else 0)
                      hunter_dy = -1 if dy < 0 else (1 if dy > 0 else 0)
         
+        # 3. Radar (Where is the Carrot?)
         carrot_dx, carrot_dy = 0, 0
         for agent in self.world.agents:
             if isinstance(agent, Carrot):
@@ -246,6 +247,6 @@ class Rabbit(setup.Agent):
                 dy = agent.cell.y - self.cell.y
                 carrot_dx = -1 if dx < 0 else (1 if dx > 0 else 0)
                 carrot_dy = -1 if dy < 0 else (1 if dy > 0 else 0)
-                break
+                break 
         
         return tuple(surroundings + [hunter_dx, hunter_dy, carrot_dx, carrot_dy])

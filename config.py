@@ -1,14 +1,15 @@
+# coding:utf-8
 
 # -----World Setting------
-graphic_file = 'resources/world.txt'
+graphic_file = 'resources/world_level3.txt'
 grid_width = 50   # pixels of a single grid
-#wall_color = '#D3CAB4'
+wall_color = '#D3CAB4'
 wall_img = "resources/wall.png"
-#hunter_color = '#000000'
+hunter_color = '#000000'
 hunter_img = "resources/hunter.gif"
-#rabbit_color = "#FF60C7"
+rabbit_color = "#FF60C7"
 rabbit_img = "resources/rabbit.gif" 
-#carrot_color = '#DAA72A'
+carrot_color = '#DAA72A'
 carrot_img = "resources/carrot.gif"
 speed = 50  # animal speed is 10m/s, the max value supposed to be less than 1000.
 

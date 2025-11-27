@@ -1,5 +1,3 @@
-# coding:utf-8
-
 import time
 import tkinter as tk
 import random
@@ -9,11 +7,11 @@ class Cell:
     def __init__(self):
         self.wall = False
 
-    # def color(self):
-    #     if self.wall:
-    #         return cfg.wall_color
-    #     else:
-    #         return 'white'
+    def color(self):
+        if self.wall:
+            return cfg.wall_color
+        else:
+            return 'white'
 
     def load(self, data):
         if data == 'X':
@@ -132,12 +130,14 @@ class World:
                 self.grid[start_y + j][start_x + i].load(line[i])
 
     def update(self, rabbit_win=None, hunter_win=None):
-        for a in self.agents:
-            a.update()
-        
-        if self.display:
+        if hasattr(self.Cell, 'update'):
+            for a in self.agents:
+                a.update()
             self.display.redraw()
-            self.display.update()
+        else:
+            for a in self.agents:
+                old_cell = a.cell
+                a.update()
 
         if rabbit_win:
             self.rabbitWin = rabbit_win
@@ -206,6 +206,7 @@ class TkinterDisplay:
             c.destroy()
 
         self.activated = True
+
         self.frameWidth  = self.world.width * self.size
         self.frameHeight = self.world.height * self.size
         self.root.geometry(f"{self.frameWidth}x{self.frameHeight}")
@@ -234,10 +235,10 @@ class TkinterDisplay:
             return
         
         self.set_title(self.title)
-        try:
-            self.root.update()
-        except tk.TclError:
-            self.activated = False
+        
+        # Update the rendering
+        self.redraw() 
+        self.root.update()
         
         if self.speed > 0:
             time.sleep(float(1)/self.speed)
@@ -289,10 +290,7 @@ class TkinterDisplay:
             for y in range(self.world.height):
                 for x in range(self.world.width):
                     cell = self.world.grid[y][x]
-
-                    if len(cell.agents) == 0 and not cell.wall:
-                        continue
-
+                
                 # If empty and no wall, skip drawing (black background)
                     x1 = x * self.size
                     y1 = y * self.size
@@ -303,7 +301,10 @@ class TkinterDisplay:
                         # Try to draw image
                         if hasattr(cfg, 'wall_img') and self.image_cache.get(cfg.wall_img):
                              self.canvas.create_image(x1 + self.size/2, y1 + self.size/2, image=self.image_cache[cfg.wall_img])
-                        
+                        else:
+                            # Fallback to color
+                            self.canvas.create_rectangle(x1, y1, x2, y2, fill=cfg.wall_color, outline="")
+
                     if len(cell.agents) > 0:
                             agent = cell.agents[-1]
                             if hasattr(agent, 'image_file') and agent.image_file:
@@ -325,14 +326,38 @@ class TkinterDisplay:
                                     self.canvas.create_image(center_x, center_y, image=photo)
                                 else:
                                     # Fallback to square if image failed
-                                    self.canvas.create_rectangle(x1, y1, x2, y2, fill='black', outline="")
+                                    self._draw_square_agent(x, y, agent)
                             else:
                                 # Normal Square Agent
-                                self.canvas.create_rectangle(x1, y1, x2, y2, fill='black', outline="")
+                                self._draw_square_agent(x, y, agent)
         except tk.TclError:
             self.activated = False
 
+    def _draw_square_agent(self, x, y, agent):
+        """Helper to draw the old style square"""
+        color = self.get_text_color(agent)
+        x1 = x * self.size
+        y1 = y * self.size
+        x2 = x1 + self.size
+        y2 = y1 + self.size
+        self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+
+    def redraw_cell(self, x, y):
+        # Not needed with Canvas full redraw optimization
+        pass
     
+    def get_text_color(self, obj):
+        c = getattr(obj, 'color', None)
+        if c is None:
+            c = getattr(obj, 'color', 'white')
+        if callable(c):
+            c = c()
+        if isinstance(c, type(())):
+            if isinstance(c[0], type(0.0)):
+                c = (int(c[0] * 255), int(c[1] * 255), int(c[2] * 255))
+            return '#%02x%02x%02x' % c
+        return c
+
 def make_display(world):
     d = TkinterDisplay()
     d.world = world
