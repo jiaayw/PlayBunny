@@ -1,0 +1,15 @@
+{
+    "outcomes": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "episode_rewards": [
+        -102,
+        -106,
+        -126,
+        -105
+    ],
+    "steps_to_carrot": []
+}

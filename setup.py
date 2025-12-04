@@ -212,7 +212,7 @@ class TkinterDisplay:
         self.root.geometry(f"{self.frameWidth}x{self.frameHeight}")
 
         # --- OPTIMIZATION: Use Canvas for rendering ---
-        self.canvas = tk.Canvas(self.root, width=self.frameWidth, height=self.frameHeight, bg='white')
+        self.canvas = tk.Canvas(self.root, width=self.frameWidth, height=self.frameHeight, bg='green')
         self.canvas.pack()
         
         self.redraw()
