@@ -3,6 +3,7 @@ import tkinter as tk
 import random
 import config as cfg
 
+
 class Cell:
     def __init__(self):
         self.wall = False
@@ -67,9 +68,10 @@ class World:
         self.reset()
         self.load(filename)
         
-        # Initialize display LAST
+        # Initialize display
         self.display = make_display(self)
 
+    # error handling
     def get_file_size(self, filename):
         if filename is None:
             raise Exception("world file not exist!")
@@ -99,9 +101,9 @@ class World:
     def get_cell(self, x, y):
         return self.grid[y][x]
 
+  
+    # Currently keeping as is for "calculate_state" logic.
     def get_relative_cell(self, x, y):
-        # Keep wrapping for Vision (optional), or make strict. 
-        # Currently keeping as is for "calculate_state" logic.
         return self.grid[y % self.height][x % self.width]
 
     def load(self, f):
@@ -129,6 +131,7 @@ class World:
             for i in range(min(fw, len(line))):
                 self.grid[start_y + j][start_x + i].load(line[i])
 
+    # update state
     def update(self, rabbit_win=None, hunter_win=None):
         if hasattr(self.Cell, 'update'):
             for a in self.agents:
@@ -157,8 +160,7 @@ class World:
         x2 = x + dx
         y2 = y + dy
 
-        # --- OPTIMIZATION: STRICT BOUNDARY CHECK ---
-        # Prevents wrapping around the screen (teleporting)
+        # more strict boundary check based on debugging
         if x2 < 0 or x2 >= self.width or y2 < 0 or y2 >= self.height:
             return x, y
         
@@ -181,7 +183,7 @@ class World:
         agent.world = self
 
 
-# GUI display
+# GUI
 class TkinterDisplay:
     def __init__(self, size=cfg.grid_width):
         self.activated = False
@@ -195,8 +197,8 @@ class TkinterDisplay:
         self.frameWidth = 0
         self.frameHeight = 0
         self.world = None
-        self.canvas = None # Use Canvas instead of Image Label
-        self.image_cache = {} # <--- 1. Initialize Cache Dictionary
+        self.canvas = None 
+        self.image_cache = {} 
 
     def activate(self):
         if self.root is None:
@@ -211,7 +213,7 @@ class TkinterDisplay:
         self.frameHeight = self.world.height * self.size
         self.root.geometry(f"{self.frameWidth}x{self.frameHeight}")
 
-        # --- OPTIMIZATION: Use Canvas for rendering ---
+        # change to canvas to be more effcient in rendering
         self.canvas = tk.Canvas(self.root, width=self.frameWidth, height=self.frameHeight, bg='green')
         self.canvas.pack()
         
@@ -276,7 +278,7 @@ class TkinterDisplay:
         if not self.activated:
             return
         
-        # Clear canvas
+        # clear canvas
         try:
             self.canvas.delete("all")
 
@@ -286,32 +288,29 @@ class TkinterDisplay:
                 except:
                     self.image_cache[cfg.wall_img] = None
 
-        # Draw only necessary items
             for y in range(self.world.height):
                 for x in range(self.world.width):
                     cell = self.world.grid[y][x]
                 
-                # If empty and no wall, skip drawing (black background)
                     x1 = x * self.size
                     y1 = y * self.size
                     x2 = x1 + self.size
                     y2 = y1 + self.size
 
                     if cell.wall:
-                        # Try to draw image
+                        # draw image
                         if hasattr(cfg, 'wall_img') and self.image_cache.get(cfg.wall_img):
                              self.canvas.create_image(x1 + self.size/2, y1 + self.size/2, image=self.image_cache[cfg.wall_img])
                         else:
-                            # Fallback to color
+                            # fallback to color
+                            # error handling from gpt
                             self.canvas.create_rectangle(x1, y1, x2, y2, fill=cfg.wall_color, outline="")
 
                     if len(cell.agents) > 0:
                             agent = cell.agents[-1]
                             if hasattr(agent, 'image_file') and agent.image_file:
-                                # 2. Load Image if not in cache
                                 if agent.image_file not in self.image_cache:
                                     try:
-                                        # Load the image
                                         photo = tk.PhotoImage(file=agent.image_file)
                                         self.image_cache[agent.image_file] = photo
                                     except Exception as e:
@@ -320,15 +319,13 @@ class TkinterDisplay:
                             
                                 photo = self.image_cache[agent.image_file]
                                 if photo:
-                                    # Center the image in the cell
                                     center_x = x * self.size + (self.size / 2)
                                     center_y = y * self.size + (self.size / 2)
                                     self.canvas.create_image(center_x, center_y, image=photo)
                                 else:
-                                    # Fallback to square if image failed
+                                    # fallback to square
                                     self._draw_square_agent(x, y, agent)
                             else:
-                                # Normal Square Agent
                                 self._draw_square_agent(x, y, agent)
         except tk.TclError:
             self.activated = False
@@ -341,10 +338,6 @@ class TkinterDisplay:
         x2 = x1 + self.size
         y2 = y1 + self.size
         self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
-
-    def redraw_cell(self, x, y):
-        # Not needed with Canvas full redraw optimization
-        pass
     
     def get_text_color(self, obj):
         c = getattr(obj, 'color', None)

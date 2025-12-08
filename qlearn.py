@@ -1,5 +1,3 @@
-# coding:utf-8
-
 import random
 import config as cfg
 import pickle
@@ -18,14 +16,15 @@ class QLearn:
         self.q = {}
         self.alpha = alpha
         self.gamma = gamma
-        self.actions = actions  # collection of choices
-        self.epsilon = epsilon  # exploration constant
+         # collection of choices
+        self.actions = actions 
+        # exploration constant
+        self.epsilon = epsilon  
 
-    # Get the utility of an action in certain state, default is 0.0.
     def get_utility(self, state, action):
         return self.q.get((state, action), 0.0)
 
-    # When in certain state, find the best action while explore new grid by chance.
+    # when in certain state, find the best action while explore new grid by chance.
     def choose_action(self, state):
         if random.random() < self.epsilon:
             action = random.choice(self.actions)

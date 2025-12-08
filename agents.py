@@ -1,4 +1,3 @@
-# agents.py
 import random
 import setup
 import qlearn
@@ -6,7 +5,6 @@ import config as cfg
 import os
 import heapq
 
-# Helper function
 def pick_random_location(world):
     while 1:
         x = random.randrange(world.width)
@@ -17,7 +15,6 @@ def pick_random_location(world):
 
 class Carrot(setup.Agent):
     def __init__(self):
-        # Removed self.color
         self.image_file = cfg.carrot_img
     
     def update(self):
@@ -27,7 +24,6 @@ class Hunter(setup.Agent):
     def __init__(self, filename):
         self.cell = None
         self.hunterWin = 0
-        # Removed self.color
         self.image_file = cfg.hunter_img
         
         self.move = [(0, -1), (1, 0), (0, 1), (-1, 0)]
@@ -77,7 +73,7 @@ class Hunter(setup.Agent):
 
             for i in range(4):
                 ny, nx = current[0] + self.move[i][0], current[1] + self.move[i][1]
-                # Boundary Check
+                # boundary Check
                 if nx < 0 or ny < 0 or nx >= self.world.width or ny >= self.world.height: continue
                 if self.grid_list[ny][nx] == 1: continue
 
@@ -119,7 +115,6 @@ class Rabbit(setup.Agent):
         self.rabbitWin = 0
         self.lastState = None
         self.lastAction = None
-        # Removed self.color
         self.image_file = cfg.rabbit_img
         self.skip_turn = False 
         self.metrics = metrics 
@@ -133,8 +128,7 @@ class Rabbit(setup.Agent):
         caught = False
         hunter_agent = None
         
-        # LOGIC CHANGED: Check if agent is an instance of Hunter class
-        # instead of checking color.
+        # check if agent is an instance of Hunter class
         for agent in self.cell.agents:
             if isinstance(agent, Hunter):
                 self.hunterWin += 1
@@ -176,7 +170,6 @@ class Rabbit(setup.Agent):
 
         found_carrot = False
         target_carrot = None
-        # LOGIC CHANGED: Explicit type check for Carrot
         for agent in self.cell.agents:
             if isinstance(agent, Carrot):
                 found_carrot = True
@@ -216,7 +209,7 @@ class Rabbit(setup.Agent):
         if self._check_collision_and_die(state, reward): return
 
     def calculate_state(self):
-        # 1. Immediate Surroundings (8 neighbors)
+        # immediate surroundings (8 neighbors)
         def cell_value(cell):
             if cell.wall: return 1
             return 0
@@ -224,11 +217,10 @@ class Rabbit(setup.Agent):
         dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
         surroundings = [cell_value(self.world.get_relative_cell(self.cell.x + d[0], self.cell.y + d[1])) for d in dirs]
 
-        # 2. Radar (Where is the Hunter?)
+        # radar, search for the hunter
         hunter_dx, hunter_dy = 0, 0
         closest_dist = 9999
         
-        # LOGIC CHANGED: Check for Hunter instance instead of color
         for agent in self.world.agents:
              if isinstance(agent, Hunter):
                  dx = agent.cell.x - self.cell.x
@@ -239,7 +231,7 @@ class Rabbit(setup.Agent):
                      hunter_dx = -1 if dx < 0 else (1 if dx > 0 else 0)
                      hunter_dy = -1 if dy < 0 else (1 if dy > 0 else 0)
         
-        # 3. Radar (Where is the Carrot?)
+        # rader, search the carrot
         carrot_dx, carrot_dy = 0, 0
         for agent in self.world.agents:
             if isinstance(agent, Carrot):

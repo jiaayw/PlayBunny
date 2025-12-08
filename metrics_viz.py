@@ -76,20 +76,14 @@ class TrainingMetrics:
 
         plt.figure(figsize=(10, 6), dpi=100)
         
-        # Plot raw data faintly
+        # plot raw data faintly
         plt.plot(data, color=color, alpha=0.25, linewidth=1, label='Raw')
         
-        # Plot smoothed trend
+        # plot smoothed trend
         if len(data) >= window:
-            # Create the smoothed data (shorter than original)
-            smooth = np.convolve(data, np.ones(window)/window, mode='valid')
             
-            # --- FIX IS HERE ---
-            # The x_axis must match the length of 'smooth'
-            # We align it to end at the same point as the raw data
+            smooth = np.convolve(data, np.ones(window)/window, mode='valid')
             x_axis = range(window - 1, len(data))
-            # -------------------
-
             plt.plot(x_axis, smooth, color=color, linewidth=2.5, label=f'Trend ({window} avg)')
             
             if fill:
@@ -118,7 +112,7 @@ class TrainingMetrics:
                 chunk = self.outcomes[start:i+1]
                 rates.append(sum(chunk) / len(chunk))
             
-            # Note: For success rate, we calculate 'rates' manually above to be same length as outcomes,
+            # For success rate, we calculate 'rates' manually above to be same length as outcomes,
             # so we use a small window=1 for smoothing or just rely on the calculation above.
             # To keep it simple and use the smoothing visualizer:
             self._save_plot(rates, "Success Rate (Survival + Carrot)", "Rate (0.0 - 1.0)", 
